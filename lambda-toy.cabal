@@ -1,0 +1,63 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           lambda-toy
+version:        0.1.0.0
+category:       Web
+homepage:       https://github.com/githubuser/lambda-toy#readme
+author:         George Peppard
+maintainer:     gjp1g21@soton.ac.uk
+copyright:      2023 George Peppard
+license:        ISC
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+library
+  exposed-modules:
+      Lexer
+      Parser
+  other-modules:
+      Paths_lambda_toy
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wnounused-matches
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      array
+    , base >=4.7 && <5
+  default-language: Haskell2010
+
+executable lambda-toy-cli
+  main-is: Toy.hs
+  other-modules:
+      Toyi
+      Paths_lambda_toy
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wnounused-matches
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , lambda-toy
+  default-language: Haskell2010
+
+executable lambda-toy-int
+  main-is: Toyi.hs
+  other-modules:
+      Toy
+      Paths_lambda_toy
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wnounused-matches
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , lambda-toy
+  default-language: Haskell2010
