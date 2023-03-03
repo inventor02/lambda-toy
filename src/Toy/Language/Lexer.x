@@ -1,11 +1,12 @@
 {
-module Lexer where
+module Toy.Language.Lexer where
 }
 
 %wrapper "posn"
 
 $digit = 0-9
 $alpha = [a-z]
+$varname = [a-zA-Z0-9]
 
 tokens :-
 
@@ -17,7 +18,6 @@ True                            {\p s -> TokenTrue p}
 False                           {\p s -> TokenFalse p}
 "<"                             {\p s -> TokenLessThan p}
 "+"                             {\p s -> TokenPlus p}
-$alpha.*                        {\p s -> TokenVar p s}
 if                              {\p s -> TokenIf p}
 then                            {\p s -> TokenThen p}
 else                            {\p s -> TokenElse p}
@@ -29,6 +29,7 @@ let                             {\p s -> TokenLet p}
 in                              {\p s -> TokenIn p}
 "="                             {\p s -> TokenEquals p}
 "->"                            {\p s -> TokenArrow p}
+$alpha$varname*                 {\p s -> TokenVar p s}
 
 {
 
@@ -74,7 +75,7 @@ tokenPosn t = case t of
                 TokenIn p -> p
                 TokenEquals p -> p
                 TokenArrow p -> p
-                t -> error "token not implemented fully " ++ show t
+                t -> error ("token not implemented fully " ++ show t)
 
 showPosn :: AlexPosn -> String
 showPosn (AlexPn _ l c) = "line " ++ show l ++ ", column " ++ show c

@@ -25,7 +25,9 @@ ghc-options:
 - -Wmissing-home-modules
 - -Wpartial-fields
 - -Wredundant-constraints
-- -Wnounused-matches
+- -Wno-unused-matches
+- -Wno-missing-export-lists
+- -Wno-incomplete-patterns
 
 library:
   source-dirs: src
@@ -35,12 +37,12 @@ library:
 
 executables:
   lambda-toy-cli:
-    source-dirs:      app
-    main:             Toy.hs
+    source-dirs:      cli
+    main:             Main.hs
     dependencies:
     - lambda-toy
   lambda-toy-int:
-    source-dirs:      app
-    main:             Toyi.hs
+    source-dirs:      interactive
+    main:             Main.hs
     dependencies:
     - lambda-toy

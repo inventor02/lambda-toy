@@ -1,7 +1,7 @@
 {
-module Parser where
+module Toy.Language.Parser where
 
-import Lexer
+import Toy.Language.Lexer
 }
 
 %name parseToy
@@ -72,7 +72,7 @@ data Expr = LitInt Int
 
 parseError :: [Token] -> a
 parseError [] = error "unknown parse error"
-parseError (t:_) = error "parse error at " ++ errloc t
+parseError (t:_) = error ("parse error at " ++ errloc t)
   where errloc = showPosn.tokenPosn
 
 }
