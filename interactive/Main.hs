@@ -4,7 +4,7 @@ import Toy.Language.Runtime
 import System.IO (hFlush, stdout, hPutStrLn, stderr)
 import Control.Monad (when)
 import System.Exit (exitSuccess)
-import Control.Exception (catch, SomeException (SomeException), ErrorCall (ErrorCall))
+import Control.Exception (SomeException, catch)
 
 main :: IO ()
 main = loop
@@ -15,11 +15,14 @@ loop = do
   hFlush stdout
   input <- getLine
   when (input == ":q") $ putStrLn "Bye" *> exitSuccess
-  r <- catch
-            (return $ eval input)
-            (\e -> do 
-                    let e' = show (e :: SomeException)
-                    hPutStrLn stderr e'
-                    return "")
-  putStrLn (">>>> " ++ show r)
+  catch (eval' input)
+        (\e -> do let err = show (e :: SomeException)
+                  hPutStrLn stderr ("!!!> " ++ err)
+                  return ())
   loop
+
+eval' :: String -> IO ()
+eval' i = do
+  let r = eval i
+  putStrLn (">>>> " ++ show r)
+  return ()
