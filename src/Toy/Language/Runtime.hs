@@ -63,3 +63,4 @@ eval1 (E (Var x), e, k) = (x', e, k)
                 Nothing -> error "evaluation error"
 
 -- eval1 (E (LitInt ))
+-- TODO handle popping frames off the kontinuation
