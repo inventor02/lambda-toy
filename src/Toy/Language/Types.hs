@@ -29,6 +29,7 @@ typeOf e (Plus e1 e2) = case (typeOf e e1, typeOf e e2) of
                               (t1, t2) -> error ("expected Int + Int, got " ++ unparseType t1 ++ " < " ++ unparseType t2)
 typeOf e (IfThenElse e1 e2 e3) | te1 /= TBool = error ("expected condition is Bool, got " ++ unparseType te1)
                                | te2 /= te3 = error ("then and else must have same type, got " ++ unparseType te2 ++ " and " ++ unparseType te3)
+                               | otherwise = te2
   where te1 = typeOf e e1
         te2 = typeOf e e2
         te3 = typeOf e e3

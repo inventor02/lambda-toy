@@ -24,5 +24,5 @@ loop = do
 eval' :: String -> IO ()
 eval' i = do
   let r = eval i
-  putStrLn (">>>> " ++ show r)
+  putStrLn (">>>> " ++ r)
   return ()

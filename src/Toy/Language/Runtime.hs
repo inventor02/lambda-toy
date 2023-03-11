@@ -4,68 +4,97 @@ import Toy.Language.Lexer
 import Toy.Language.Parser
 import Toy.Language.Types
 
+-- environment
 type Environment = [(String, CExpr)]
-data CExpr = E Expr | C CExpr Environment deriving (Eq, Show)
 
+-- expression type that supports either a wrapped expression or a continuation
+data CExpr = E Expr | C String ToyType CExpr Environment deriving (Eq, Show)
+
+-- CEK machine data types
 data Frame  = AppHole CExpr
             | HoleApp CExpr Environment
             | LessHole CExpr
-            | HoleLess CExpr
+            | HoleLess CExpr Environment
             | AddHole CExpr
-            | HoleAdd CExpr
+            | HoleAdd CExpr Environment
             | IfHoleThenElse CExpr CExpr Environment
             | LetHoleIn String ToyType CExpr Environment
   deriving (Eq, Show)
 type Kontinuation = [Frame]
 type Configuration = (CExpr, Environment, Kontinuation)
 
+-- convert an input string to a \Toy expression
 stringToExpr :: String -> Expr
 stringToExpr = parseToy . alexScanTokens
 
+-- get the type of an expression
 exprType :: Expr -> ToyType
 exprType = typeOf []
 
+-- unpack a CExpr back to a normal expression
+unpack :: CExpr -> Expr
+unpack (C x t e _) = Func x t (unpack e)
+unpack (E e) = e
+
+-- evaluate a string and return a "pretty printed" expression
 eval :: String -> String
-eval s = show e ++ " :: " ++ unparseType t
+eval s = show (unpack e') ++ " :: " ++ unparseType t
   where e = stringToExpr s
+        (e', _, _) = loopEval (E e, [], [])
         t = exprType e
 
+loopEval :: Configuration -> Configuration
+loopEval (e, env, k)  | e == e' && isVal e' && null k = (e', [], [])
+                      | otherwise = loopEval (e', env', k')
+  where (e', env', k') = eval1 (e, env, k)
+
+-- determine if an expression is a terminated value
+isVal :: CExpr -> Bool
+isVal (C {}) = True
+isVal (E (LitInt _)) = True
+isVal (E (LitBool _)) = True
+isVal _ = False
+
+-- single step CEK evaluation function
 eval1 :: Configuration -> Configuration
 
-eval1 (E (LessThan (LitInt n) (LitInt m)), e, k) = (E (LitBool (n < m)), e, k)
-eval1 (E (LessThan e1@(LitInt n) e2), e, k) = (E e2, e, LessHole (E e1):k)
-eval1 (E (LessThan e1 e2), e, k) = (E e1, e, HoleLess (E e2):k)
-eval1 (E l@(LitInt _), e, (HoleLess (E e2)):k) = (E (LessThan l e2), e, k)
-eval1 (E l@(LitInt _), e, (LessHole (E e1)):k) = (E (LessThan e1 l), e, k)
-
-eval1 (E (Plus (LitInt n) (LitInt m)), e, k) = (E (LitInt (n + m)), e, k)
-eval1 (E (Plus e1@(LitInt n) e2), e, k) = (E e2, e, AddHole (E e1):k)
-eval1 (E (Plus e1 e2), e, k) = (E e1, e, HoleAdd (E e2):k)
-eval1 (E l@(LitInt _), e, (HoleAdd (E e2)):k) = (E (Plus l e2), e, k)
-eval1 (E l@(LitInt _), e, (AddHole (E e1)):k) = (E (Plus e1 l), e, k)
-
-eval1 (E (IfThenElse (LitBool True) e2 _), e, k) = (E e2, e, k)
-eval1 (E (IfThenElse (LitBool False) _ e3), e, k) = (E e3, e, k)
-eval1 (E (IfThenElse e1 e2 e3), e, k) = (E e1, e, IfHoleThenElse (E e2) (E e3) e:k)
-eval1 (E l@(LitBool _), e, IfHoleThenElse (E e2) (E e3) e':k) = (E (IfThenElse l e2 e3), e', k)
-
-eval1 (E (LetIn x t v@(LitInt _) e2), e, k) = (E e2, (x, C (E v) e):e, k)
-eval1 (E (LetIn x t v@(LitBool _) e2), e, k) = (E e2, (x, C (E v) e):e, k)
-eval1 (E (LetIn x t v@(Func {}) e2), e, k) = (E e2, (x, C (E v) e):e, k)
-eval1 (E (LetIn x t e1 e2), e, k) = (E e1, e, LetHoleIn x t (E e2) e:k)
-eval1 (E l@(LitInt _), e, LetHoleIn x t (E e2) e':k) = (E (LetIn x t l e2), e', k)
-eval1 (E l@(LitBool _), e, LetHoleIn x t (E e2) e':k) = (E (LetIn x t l e2), e', k)
-
-eval1 (E (App (Func x _ e1) v@(LitInt _)), e, k) = (E e1, (x, C (E v) e):e, k)
-eval1 (E (App (Func x _ e1) v@(LitBool _)), e, k) = (E e1, (x, C (E v) e):e, k)
-eval1 (E (App (Func x _ e1) v@(Func {})), e, k) = (E e1, (x, C (E v) e):e, k)
-eval1 (E (App f@(Func {}) e2), e, k) = (E e2, e, AppHole (E f):k)
-eval1 (E (App e1 e2), e, k) = (E e1, e, HoleApp (E e2) e:k)
-
+-- rule for variables
 eval1 (E (Var x), e, k) = (x', e, k)
   where x' = case lookup x e of
-                Just a -> a
-                Nothing -> error ("unexpected evaluation error, undefined variable " ++ x)
+                Just val -> val
+                Nothing -> error "unexpected runtime evaluation error, undefined variable"
 
-eval1 (_, _, _:_) = error "unexpected evaluation error with kontinuation"
-eval1 _ = error "unexpected evaluation error"
+-- completed evaluations
+eval1 (v, e, []) | isVal v = (v, e, [])
+
+-- rules for addition
+eval1 (E (Plus e1 e2), e, k) = (E e1, e, HoleAdd (E e2) e:k)
+eval1 (E e1@(LitInt n1), e, HoleAdd (E e2) e':k) = (E e2, e', AddHole (E e1):k)
+eval1 (E e2@(LitInt n2), e, AddHole (E (LitInt n1)):k) = (E (LitInt (n1 + n2)), [], k) -- TODO why clear environment here?
+
+-- rules for less than
+eval1 (E (LessThan e1 e2), e, k) = (E e1, e, HoleLess (E e2) e:k)
+eval1 (E e1@(LitInt n1), e, HoleLess (E e2) e':k) = (E e2, e', LessHole (E e1):k)
+eval1 (E e2@(LitInt n2), e, LessHole (E (LitInt n1)):k) = (E (LitBool (n1 < n2)), [], k)
+
+-- rules for if then else
+eval1 (E (IfThenElse e1 e2 e3), e, k) = (E e1, e, IfHoleThenElse (E e2) (E e3) e:k)
+eval1 (E (LitBool b), e, IfHoleThenElse (E e2) (E e3) e':k) | b = (E e2, e', k)
+                                                            | otherwise = (E e3, e', k)
+
+-- rules for let in
+eval1 (E (LetIn x t e1 e2), e, k) = (E e1, e, LetHoleIn x t (E e2) e:k)
+eval1 (v, e, LetHoleIn x t (E e2) e':k) | isVal v = (E e2, (x, v):e', k)
+
+-- rules for lambda abstraction
+eval1 (E (Func x t e1), e, k) = (C x t (E e1) e, [], k)
+
+-- rules for application
+eval1 (E (App e1 e2), e, k) = (E e1, e, HoleApp (E e2) e:k)
+eval1 (e1, e, HoleApp (E e2) e':k) = (E e2, e', AppHole e1:k)
+eval1 (v, e, AppHole (C x t e1 e'):k) | isVal v = (e1, (x, v):e', k)
+
+-- catch-all where we have no cases to execute
+-- theoretically, this should not happen
+-- well typed programs never go wrong >:)
+eval1 _ = error "unexpected runtime evaluation error"
