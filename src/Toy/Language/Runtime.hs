@@ -1,7 +1,5 @@
 module Toy.Language.Runtime where
 
-import Data.List
-
 import Toy.Language.Lexer
 import Toy.Language.Parser
 import Toy.Language.Types
@@ -16,7 +14,7 @@ data Frame  = AppHole CExpr
             | AddHole CExpr
             | HoleAdd CExpr
             | IfHoleThenElse CExpr CExpr Environment
-            | LetHoleIn CExpr Environment
+            | LetHoleIn String ToyType CExpr Environment
   deriving (Eq, Show)
 type Kontinuation = [Frame]
 type Configuration = (CExpr, Environment, Kontinuation)
@@ -37,19 +35,26 @@ eval1 :: Configuration -> Configuration
 eval1 (E (LessThan (LitInt n) (LitInt m)), e, k) = (E (LitBool (n < m)), e, k)
 eval1 (E (LessThan e1@(LitInt n) e2), e, k) = (E e2, e, LessHole (E e1):k)
 eval1 (E (LessThan e1 e2), e, k) = (E e1, e, HoleLess (E e2):k)
+eval1 (E l@(LitInt _), e, (HoleLess (E e2)):k) = (E (LessThan l e2), e, k)
+eval1 (E l@(LitInt _), e, (LessHole (E e1)):k) = (E (LessThan e1 l), e, k)
 
 eval1 (E (Plus (LitInt n) (LitInt m)), e, k) = (E (LitInt (n + m)), e, k)
 eval1 (E (Plus e1@(LitInt n) e2), e, k) = (E e2, e, AddHole (E e1):k)
 eval1 (E (Plus e1 e2), e, k) = (E e1, e, HoleAdd (E e2):k)
+eval1 (E l@(LitInt _), e, (HoleAdd (E e2)):k) = (E (Plus l e2), e, k)
+eval1 (E l@(LitInt _), e, (AddHole (E e1)):k) = (E (Plus e1 l), e, k)
 
 eval1 (E (IfThenElse (LitBool True) e2 _), e, k) = (E e2, e, k)
 eval1 (E (IfThenElse (LitBool False) _ e3), e, k) = (E e3, e, k)
 eval1 (E (IfThenElse e1 e2 e3), e, k) = (E e1, e, IfHoleThenElse (E e2) (E e3) e:k)
+eval1 (E l@(LitBool _), e, IfHoleThenElse (E e2) (E e3) e':k) = (E (IfThenElse l e2 e3), e', k)
 
 eval1 (E (LetIn x t v@(LitInt _) e2), e, k) = (E e2, (x, C (E v) e):e, k)
 eval1 (E (LetIn x t v@(LitBool _) e2), e, k) = (E e2, (x, C (E v) e):e, k)
 eval1 (E (LetIn x t v@(Func {}) e2), e, k) = (E e2, (x, C (E v) e):e, k)
-eval1 (E (LetIn x t e1 e2), e, k) = (E e1, e, LetHoleIn (E e2) e:k)
+eval1 (E (LetIn x t e1 e2), e, k) = (E e1, e, LetHoleIn x t (E e2) e:k)
+eval1 (E l@(LitInt _), e, LetHoleIn x t (E e2) e':k) = (E (LetIn x t l e2), e', k)
+eval1 (E l@(LitBool _), e, LetHoleIn x t (E e2) e':k) = (E (LetIn x t l e2), e', k)
 
 eval1 (E (App (Func x _ e1) v@(LitInt _)), e, k) = (E e1, (x, C (E v) e):e, k)
 eval1 (E (App (Func x _ e1) v@(LitBool _)), e, k) = (E e1, (x, C (E v) e):e, k)
@@ -60,7 +65,7 @@ eval1 (E (App e1 e2), e, k) = (E e1, e, HoleApp (E e2) e:k)
 eval1 (E (Var x), e, k) = (x', e, k)
   where x' = case lookup x e of
                 Just a -> a
-                Nothing -> error "evaluation error"
+                Nothing -> error ("unexpected evaluation error, undefined variable " ++ x)
 
--- eval1 (E (LitInt ))
--- TODO handle popping frames off the kontinuation
+eval1 (_, _, _:_) = error "unexpected evaluation error with kontinuation"
+eval1 _ = error "unexpected evaluation error"
