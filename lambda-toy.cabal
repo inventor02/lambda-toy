@@ -5,9 +5,9 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           lambda-toy
-version:        0.1.0.0
+version:        1.0.0.0
 category:       Web
-homepage:       https://github.com/githubuser/lambda-toy#readme
+homepage:       https://github.com/inventor02/lambda-toy#readme
 author:         George Peppard
 maintainer:     gjp1g21@soton.ac.uk
 copyright:      2023 George Peppard
