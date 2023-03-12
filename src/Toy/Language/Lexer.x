@@ -29,6 +29,9 @@ let                             {\p s -> TokenLet p}
 in                              {\p s -> TokenIn p}
 "="                             {\p s -> TokenEquals p}
 "->"                            {\p s -> TokenArrow p}
+","                             {\p s -> TokenComma p}
+fst                             {\p s -> TokenFst p}
+snd                             {\p s -> TokenSnd p}
 $alpha$varname*                 {\p s -> TokenVar p s}
 
 {
@@ -52,6 +55,9 @@ data Token  = TokenInt AlexPosn
             | TokenIn AlexPosn
             | TokenEquals AlexPosn
             | TokenArrow AlexPosn
+            | TokenComma AlexPosn
+            | TokenFst AlexPosn
+            | TokenSnd AlexPosn
   deriving (Show, Eq)
 
 tokenPosn :: Token -> AlexPosn
@@ -75,6 +81,7 @@ tokenPosn t = case t of
                 TokenIn p -> p
                 TokenEquals p -> p
                 TokenArrow p -> p
+                TokenComma p -> p
                 t -> error ("token not implemented fully " ++ show t)
 
 showPosn :: AlexPosn -> String

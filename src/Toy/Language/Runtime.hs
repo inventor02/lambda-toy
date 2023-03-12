@@ -19,6 +19,8 @@ data Frame  = AppHole CExpr
             | HoleAdd CExpr Environment
             | IfHoleThenElse CExpr CExpr Environment
             | LetHoleIn String ToyType CExpr Environment
+            | FstHole Environment
+            | SndHole Environment
   deriving (Eq, Show)
 type Kontinuation = [Frame]
 type Configuration = (CExpr, Environment, Kontinuation)
@@ -38,7 +40,7 @@ unpack (E e) = e
 
 -- evaluate a string and return a "pretty printed" expression
 eval :: String -> String
-eval s = show (unpack e') ++ " :: " ++ unparseType t
+eval s = (unparseType $! t) ++ " " ++ show (unpack e')
   where e = stringToExpr s
         (e', _, _) = loopEval (E e, [], [])
         t = exprType e
@@ -53,6 +55,7 @@ isVal :: CExpr -> Bool
 isVal (C {}) = True
 isVal (E (LitInt _)) = True
 isVal (E (LitBool _)) = True
+isVal (E (Pair _ _)) = True
 isVal _ = False
 
 -- single step CEK evaluation function
@@ -62,7 +65,7 @@ eval1 :: Configuration -> Configuration
 eval1 (E (Var x), e, k) = (x', e, k)
   where x' = case lookup x e of
                 Just val -> val
-                Nothing -> error "unexpected runtime evaluation error, undefined variable"
+                Nothing -> error ("unexpected runtime evaluation error, undefined variable " ++ x)
 
 -- completed evaluations
 eval1 (v, e, []) | isVal v = (v, e, [])
@@ -94,7 +97,13 @@ eval1 (E (App e1 e2), e, k) = (E e1, e, HoleApp (E e2) e:k)
 eval1 (e1, e, HoleApp (E e2) e':k) = (E e2, e', AppHole e1:k)
 eval1 (v, e, AppHole (C x t e1 e'):k) | isVal v = (e1, (x, v):e', k)
 
+-- rules for pair projection
+eval1 (E (Fst e1), e, k) = (E e1, e, FstHole e:k)
+eval1 (E (Pair e1 e2), e, FstHole e':k) = (E e1, e', k)
+eval1 (E (Snd e1), e, k) = (E e1, e, SndHole e:k)
+eval1 (E (Pair e1 e2), e, SndHole e':k) = (E e2, e', k)
+
 -- catch-all where we have no cases to execute
 -- theoretically, this should not happen
 -- well typed programs never go wrong >:)
-eval1 _ = error "unexpected runtime evaluation error"
+eval1 (e, env, k) = error ("unexpected runtime evaluation error, trying to evaluate " ++ show e ++ " (environment: " ++ show env ++ ", cont: " ++ show k ++ ")")

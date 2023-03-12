@@ -14,6 +14,7 @@ unparseType :: ToyType -> String
 unparseType TBool = "Bool"
 unparseType TInt = "Int"
 unparseType (TFunc t1 t2) = "(" ++ unparseType t1 ++ " -> " ++ unparseType t2 ++ ")"
+unparseType (TPair t1 t2) = "(" ++ unparseType t1 ++ ", " ++ unparseType t2 ++ ")"
 
 typeOf :: TypeEnvironment -> Expr -> ToyType
 typeOf e (LitInt _) = TInt
@@ -45,3 +46,12 @@ typeOf e (App e1 e2) | tf1 /= te2 = error ("mismatched function types, expected 
                       TFunc f1 f2 -> (f1, f2)
                       t -> error ("expected function type, got " ++ unparseType t)
         te2 = typeOf e e2
+typeOf e (Pair e1 e2) = TPair te1 te2
+  where te1 = typeOf e e1
+        te2 = typeOf e e2
+typeOf e (Fst e1) = case typeOf e e1 of
+                      TPair v1 _ -> v1
+                      t -> error ("expected pair type, got " ++ unparseType t)
+typeOf e (Snd e1) = case typeOf e e1 of
+                      TPair _ v2 -> v2
+                      t -> error ("expected pair type, got " ++ unparseType t)
