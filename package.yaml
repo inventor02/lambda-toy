@@ -1,8 +1,8 @@
 name:                lambda-toy
-version:             0.1.0.0
+version:             1.0.0.0
 #synopsis:
 #description:
-homepage:            https://github.com/githubuser/lambda-toy#readme
+homepage:            https://github.com/inventor02/lambda-toy#readme
 license:             ISC
 author:              George Peppard
 maintainer:          gjp1g21@soton.ac.uk
